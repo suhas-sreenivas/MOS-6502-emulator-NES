@@ -118,6 +118,23 @@ void sta_zp(mos6502_t * cpu){
 	write8(cpu,zp_addr,cpu->a);
 }
 
+void add(mos6502_t * cpu, uint16_t value){
+	uint16_t sum = value + cpu->a + cpu->p.c;
+	//flags set or unset below
+	cpu->p.n = sum & 0x80 ? 1 : 0;
+	cpu->p.c = sum & 0xFF00 ? 1:0;
+	cpu->p.v = (!((cpu->a ^ value) & 0x80) && ((cpu->a ^ sum) & 0x80));
+
+	cpu->a = sum;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+
+}
+
+void adc_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	add(cpu, read8(cpu, addr));
+}
+
 void rom_end(mos6502_t * cpu){
 	uint8_t imm_operand = read8(cpu, cpu->pc);
 	cpu->pc = cpu->pc+1;
@@ -130,7 +147,8 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xA2] = ldx_imm,
 	[0xA0] = ldy_imm,
 	[0x8D] = sta_abs,
-	[0x85] = sta_zp
+	[0x85] = sta_zp,
+	[0x6D] = adc_abs
 };
 
 mos6502_step_result_t
