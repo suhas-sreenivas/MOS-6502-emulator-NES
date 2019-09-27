@@ -97,6 +97,15 @@ void ldy_imm(mos6502_t * cpu){
 	cpu->p.n = (cpu->y & ( 1 << 7 )) >> 7;
 }
 
+void sta_abs(mos6502_t * cpu){
+	uint8_t low_byte = read8(cpu, cpu->pc);
+	uint8_t high_byte = read8(cpu, cpu->pc+1);
+	uint16_t addr = high_byte;
+	addr = (addr << 8) | low_byte;
+	write8(cpu, addr, cpu->a);
+	cpu->pc = cpu->pc + 2;
+}
+
 void rom_end(mos6502_t * cpu){
 	uint8_t imm_operand = read8(cpu, cpu->pc);
 	cpu->pc = cpu->pc+1;
@@ -107,7 +116,8 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xA9] = lda_imm,
 	[0x80] = rom_end,
 	[0xA2] = ldx_imm,
-	[0xA0] = ldy_imm
+	[0xA0] = ldy_imm,
+	[0x8D] = sta_abs
 };
 
 mos6502_step_result_t
