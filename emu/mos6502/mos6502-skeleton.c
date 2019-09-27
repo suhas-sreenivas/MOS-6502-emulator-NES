@@ -70,6 +70,12 @@ mos6502_instr_repr (mos6502_t * cpu, uint16_t addr, char * buffer, size_t buflen
 	return 0;
 }
 
+uint16_t abs_addr(mos6502_t * cpu, uint8_t offset){
+	uint8_t low_byte = read8(cpu, cpu->pc++);
+	uint8_t high_byte = read8(cpu, cpu->pc++);
+	return ((uint16_t) high_byte << 8) + (uint16_t) low_byte + (uint16_t) offset;
+}
+
 void lda_imm(mos6502_t * cpu){
 	// cpu->pc = cpu->pc + 1; //added
 	uint8_t imm_operand = read8(cpu, cpu->pc);
@@ -98,12 +104,18 @@ void ldy_imm(mos6502_t * cpu){
 }
 
 void sta_abs(mos6502_t * cpu){
-	uint8_t low_byte = read8(cpu, cpu->pc);
-	uint8_t high_byte = read8(cpu, cpu->pc+1);
-	uint16_t addr = high_byte;
-	addr = (addr << 8) | low_byte;
-	write8(cpu, addr, cpu->a);
-	cpu->pc = cpu->pc + 2;
+	// uint8_t low_byte = read8(cpu, cpu->pc);
+	// uint8_t high_byte = read8(cpu, cpu->pc+1);
+	// uint16_t addr = high_byte;
+	// addr = (addr << 8) | low_byte;
+	// write8(cpu, addr, cpu->a);
+	write8(cpu, abs_addr(cpu,0), cpu->a);
+	// cpu->pc = cpu->pc + 2;
+}
+
+void sta_zp(mos6502_t * cpu){
+	uint16_t zp_addr = read8(cpu, cpu->pc++);
+	write8(cpu,zp_addr,cpu->a);
 }
 
 void rom_end(mos6502_t * cpu){
@@ -117,7 +129,8 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x80] = rom_end,
 	[0xA2] = ldx_imm,
 	[0xA0] = ldy_imm,
-	[0x8D] = sta_abs
+	[0x8D] = sta_abs,
+	[0x85] = sta_zp
 };
 
 mos6502_step_result_t
