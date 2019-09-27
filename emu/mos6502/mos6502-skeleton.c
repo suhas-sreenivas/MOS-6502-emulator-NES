@@ -70,13 +70,53 @@ mos6502_instr_repr (mos6502_t * cpu, uint16_t addr, char * buffer, size_t buflen
 	return 0;
 }
 
+void lda_imm(mos6502_t * cpu){
+	// cpu->pc = cpu->pc + 1; //added
+	uint8_t imm_operand = read8(cpu, cpu->pc);
+	cpu->a = imm_operand;
+	cpu->pc = cpu->pc+1;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = (cpu->a & ( 1 << 7 )) >> 7;
+}
+
+void ldx_imm(mos6502_t * cpu){
+	// cpu->pc = cpu->pc + 1; //added
+	uint8_t imm_operand = read8(cpu, cpu->pc);
+	cpu->x = imm_operand;
+	cpu->pc = cpu->pc+1;
+	cpu->p.z = cpu->x == 0 ? 1 : 0;
+	cpu->p.n = (cpu->x & ( 1 << 7 )) >> 7;
+}
+
+void ldy_imm(mos6502_t * cpu){
+	// cpu->pc = cpu->pc + 1; //added
+	uint8_t imm_operand = read8(cpu, cpu->pc);
+	cpu->y = imm_operand;
+	cpu->pc = cpu->pc+1;
+	cpu->p.z = cpu->y == 0 ? 1 : 0;
+	cpu->p.n = (cpu->y & ( 1 << 7 )) >> 7;
+}
+
+void rom_end(mos6502_t * cpu){
+	uint8_t imm_operand = read8(cpu, cpu->pc);
+	cpu->pc = cpu->pc+1;
+	handle_vmcall(cpu, imm_operand);
+}
+
+void (*instr_handler_array[1000])(mos6502_t *)= {
+	[0xA9] = lda_imm,
+	[0x80] = rom_end,
+	[0xA2] = ldx_imm,
+	[0xA0] = ldy_imm
+};
+
 mos6502_step_result_t
 mos6502_step (mos6502_t * cpu)
 {
 	uint8_t opcode = read8(cpu, cpu->pc);
 
-	// FILL ME IN
-
+	cpu->pc = cpu->pc + 1;
+	(*instr_handler_array[opcode])(cpu);
 	mos6502_advance_clk(cpu, instr_cycles[opcode]);
 	return MOS6502_STEP_RESULT_SUCCESS;
 }
