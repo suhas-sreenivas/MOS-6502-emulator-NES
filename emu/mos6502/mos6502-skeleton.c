@@ -329,6 +329,32 @@ void tya(mos6502_t * cpu){
 	transfer(cpu, cpu->y, &cpu->a);
 }
 
+void push(mos6502_t * cpu, uint8_t val){
+	write8(cpu, 0x0100 | cpu->sp--,val);
+}
+
+uint8_t pop(mos6502_t * cpu){
+	return read8(cpu, 0x0100 | ++cpu->sp);
+}
+
+void pha(mos6502_t * cpu){
+	push(cpu, cpu->a);
+}
+
+void pla(mos6502_t * cpu){
+	cpu->a = pop(cpu);
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = cpu->a & 0x80 ? 1 : 0;
+}
+
+void tsx(mos6502_t * cpu){
+	transfer(cpu, cpu->sp, &cpu->x);
+}
+
+void txs(mos6502_t * cpu){
+	cpu->sp = cpu->x;
+}
+
 void nop(mos6502_t * cpu){
 
 }
@@ -396,7 +422,13 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xAA] = tax,
 	[0xA8] = tay,
 	[0x8A] = txa,
-	[0x98] = tya
+	[0x98] = tya,
+
+	[0x48] = pha,
+	[0x68] = pla,
+
+	[0xBA] = tsx,
+	[0x9A] = txs
 };
 
 mos6502_step_result_t
