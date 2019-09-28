@@ -166,6 +166,21 @@ void adc_abs(mos6502_t * cpu){
 	add(cpu, read8(cpu, addr));
 }
 
+void and(mos6502_t * cpu, uint8_t value){
+	cpu->a = cpu->a & value;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = cpu->a & 0x80 ? 1 : 0;
+}
+
+void and_imm(mos6502_t * cpu){
+	and(cpu,read8(cpu, cpu->pc++));
+}
+
+void and_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	and(cpu, read8(cpu,addr));
+}
+
 void rom_end(mos6502_t * cpu){
 	uint8_t imm_operand = read8(cpu, cpu->pc);
 	cpu->pc = cpu->pc+1;
@@ -193,7 +208,10 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x84] = sty_zp,
 	[0x94] = sty_zp_x,
 
-	[0x6D] = adc_abs
+	[0x6D] = adc_abs,
+
+	[0x29] = and_imm,
+	[0x2D] = and_abs
 };
 
 mos6502_step_result_t
