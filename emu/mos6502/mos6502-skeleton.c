@@ -113,9 +113,22 @@ void sta_abs(mos6502_t * cpu){
 	// cpu->pc = cpu->pc + 2;
 }
 
+void sta_abs_x(mos6502_t * cpu){
+	write8(cpu,abs_addr(cpu,cpu->x),cpu->a);
+}
+
+void sta_abs_y(mos6502_t * cpu){
+	write8(cpu,abs_addr(cpu,cpu->y),cpu->a);
+}
+
 void sta_zp(mos6502_t * cpu){
 	uint16_t zp_addr = read8(cpu, cpu->pc++);
 	write8(cpu,zp_addr,cpu->a);
+}
+
+void sta_zp_x(mos6502_t * cpu){
+	uint16_t zp_addr = read8(cpu, cpu->pc++);
+	write8(cpu,zp_addr+cpu->x,cpu->a);
 }
 
 void add(mos6502_t * cpu, uint16_t value){
@@ -142,12 +155,20 @@ void rom_end(mos6502_t * cpu){
 }
 
 void (*instr_handler_array[1000])(mos6502_t *)= {
-	[0xA9] = lda_imm,
 	[0x80] = rom_end,
+
+	[0xA9] = lda_imm,
+
 	[0xA2] = ldx_imm,
+
 	[0xA0] = ldy_imm,
+
 	[0x8D] = sta_abs,
 	[0x85] = sta_zp,
+	[0x95] = sta_zp_x,
+	[0x9D] = sta_abs_x,
+	[0x99] = sta_abs_y,
+
 	[0x6D] = adc_abs
 };
 
