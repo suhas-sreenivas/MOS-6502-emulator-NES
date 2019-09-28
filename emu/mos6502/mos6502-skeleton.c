@@ -212,6 +212,34 @@ void asl_abs(mos6502_t * cpu){
 	asl_mem(cpu, addr);
 }
 
+void sec(mos6502_t * cpu){
+	cpu->p.c = 1;
+}
+
+void clc(mos6502_t * cpu){
+	cpu->p.c = 0;
+}
+
+void sed(mos6502_t * cpu){
+	cpu->p.d = 1;
+}
+
+void cld(mos6502_t * cpu){
+	cpu->p.d = 0;
+}
+
+void sei(mos6502_t * cpu){
+	cpu->p.i = 1;
+}
+
+void cli(mos6502_t * cpu){
+	cpu->p.i = 0;
+}
+
+void clv(mos6502_t * cpu){
+	cpu->p.v = 0;
+}
+
 void rom_end(mos6502_t * cpu){
 	uint8_t imm_operand = read8(cpu, cpu->pc);
 	cpu->pc = cpu->pc+1;
@@ -246,7 +274,15 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x25] = and_zp,
 
 	[0x0A] = asl_a,
-	[0x0E] = asl_abs
+	[0x0E] = asl_abs,
+
+	[0x38] = sec,
+	[0x18] = clc,
+	[0xF8] = sed,
+	[0xD8] = cld,
+	[0x78] = sei,
+	[0x58] = cli,
+	[0xB8] = clv
 };
 
 mos6502_step_result_t
