@@ -306,6 +306,29 @@ void dey(mos6502_t * cpu){
 	inc_dec_ireg(cpu, &cpu->y, -1);
 }
 
+void transfer(mos6502_t * cpu, uint8_t val, uint8_t * dest){
+	*dest = val;
+	cpu->p.z = *dest == 0 ? 1 : 0;
+	cpu->p.n = *dest & 0x80 ? 1 : 0;
+
+}
+
+void tax(mos6502_t * cpu){
+	transfer(cpu, cpu->a, &cpu->x);
+}
+
+void tay(mos6502_t * cpu){
+	transfer(cpu, cpu->a, &cpu->y);
+}
+
+void txa(mos6502_t * cpu){
+	transfer(cpu, cpu->x, &cpu->a);
+}
+
+void tya(mos6502_t * cpu){
+	transfer(cpu, cpu->y, &cpu->a);
+}
+
 void nop(mos6502_t * cpu){
 
 }
@@ -368,7 +391,12 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xE8] = inx,
 	[0xC8] = iny,
 	[0xCA] = dex,
-	[0x88] = dey
+	[0x88] = dey,
+
+	[0xAA] = tax,
+	[0xA8] = tay,
+	[0x8A] = txa,
+	[0x98] = tya
 };
 
 mos6502_step_result_t
