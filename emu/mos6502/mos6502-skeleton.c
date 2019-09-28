@@ -240,6 +240,25 @@ void clv(mos6502_t * cpu){
 	cpu->p.v = 0;
 }
 
+void or(mos6502_t * cpu, uint8_t value){
+	cpu->a = cpu->a | value;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = cpu->a & 0x80 ? 1 : 0;
+}
+
+void or_imm(mos6502_t * cpu){
+	or(cpu,read8(cpu, cpu->pc++));
+}
+
+void or_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	or(cpu, read8(cpu,addr));
+}
+
+void nop(mos6502_t * cpu){
+
+}
+
 void rom_end(mos6502_t * cpu){
 	uint8_t imm_operand = read8(cpu, cpu->pc);
 	cpu->pc = cpu->pc+1;
@@ -273,6 +292,9 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x2D] = and_abs,
 	[0x25] = and_zp,
 
+	[0x09] = or_imm,
+	[0x0D] = or_abs,
+
 	[0x0A] = asl_a,
 	[0x0E] = asl_abs,
 
@@ -282,7 +304,9 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xD8] = cld,
 	[0x78] = sei,
 	[0x58] = cli,
-	[0xB8] = clv
+	[0xB8] = clv,
+
+	[0xEA] = nop
 };
 
 mos6502_step_result_t
