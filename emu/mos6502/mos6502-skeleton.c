@@ -255,6 +255,57 @@ void or_abs(mos6502_t * cpu){
 	or(cpu, read8(cpu,addr));
 }
 
+void inc_dec(mos6502_t * cpu, uint16_t addr, uint8_t val){
+	uint8_t target = read8(cpu, addr) + val;
+
+	cpu->p.z = target == 0 ? 1 : 0;
+	cpu->p.n = target & 0x80 ? 1 : 0;
+
+	write8(cpu, addr, target);
+}
+
+void inc_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	inc_dec(cpu, addr, 1);
+}
+
+void inc_zp(mos6502_t * cpu){
+	uint16_t addr = read8(cpu, cpu->pc++);
+	inc_dec(cpu, addr, 1);
+}
+
+void dec_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	inc_dec(cpu, addr, -1);
+}
+
+void dec_zp(mos6502_t * cpu){
+	uint16_t addr = read8(cpu, cpu->pc++);
+	inc_dec(cpu, addr, -1);
+}
+
+void inc_dec_ireg(mos6502_t * cpu, uint8_t * reg, uint8_t val){
+	*reg = *reg + val;
+	cpu->p.z = *reg == 0 ? 1 : 0;
+	cpu->p.n = *reg & 0x80 ? 1 : 0;
+}
+
+void inx(mos6502_t * cpu){
+	inc_dec_ireg(cpu, &cpu->x, 1);
+}
+
+void iny(mos6502_t * cpu){
+	inc_dec_ireg(cpu, &cpu->y, 1);
+}
+
+void dex(mos6502_t * cpu){
+	inc_dec_ireg(cpu, &cpu->x, -1);
+}
+
+void dey(mos6502_t * cpu){
+	inc_dec_ireg(cpu, &cpu->y, -1);
+}
+
 void nop(mos6502_t * cpu){
 
 }
@@ -306,7 +357,18 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x58] = cli,
 	[0xB8] = clv,
 
-	[0xEA] = nop
+	[0xEA] = nop,
+
+	[0xEE] = inc_abs,
+	[0xE6] = inc_zp,
+
+	[0xCE] = dec_abs,
+	[0xC6] = dec_zp,
+
+	[0xE8] = inx,
+	[0xC8] = iny,
+	[0xCA] = dex,
+	[0x88] = dey
 };
 
 mos6502_step_result_t
