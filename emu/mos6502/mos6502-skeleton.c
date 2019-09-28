@@ -347,12 +347,37 @@ void pla(mos6502_t * cpu){
 	cpu->p.n = cpu->a & 0x80 ? 1 : 0;
 }
 
+void php(mos6502_t * cpu){
+	push(cpu, cpu->p.val);
+}
+
+void plp(mos6502_t * cpu){
+	cpu->p.val = 0x20 | pop(cpu);
+}
+
 void tsx(mos6502_t * cpu){
 	transfer(cpu, cpu->sp, &cpu->x);
 }
 
 void txs(mos6502_t * cpu){
 	cpu->sp = cpu->x;
+}
+
+void sub(mos6502_t * cpu, uint16_t value){
+	uint16_t res = cpu->a - value - (1 - cpu->p.c);
+	//flags set or unset below
+	cpu->p.n = res & 0x80 ? 1 : 0;
+	cpu->p.c = res & 0xFF00 ? 0 : 1;
+	cpu->p.v = (!((cpu->a ^ value) & 0x80) && ((cpu->a ^ res) & 0x80));
+
+	cpu->a = res;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+
+}
+
+void sbc_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	sub(cpu, read8(cpu, addr));
 }
 
 void nop(mos6502_t * cpu){
@@ -426,9 +451,13 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 
 	[0x48] = pha,
 	[0x68] = pla,
+	[0x08] = php,
+	[0x28] = plp,
 
 	[0xBA] = tsx,
-	[0x9A] = txs
+	[0x9A] = txs,
+
+	[0xED] = sbc_abs
 };
 
 mos6502_step_result_t
