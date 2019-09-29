@@ -186,30 +186,56 @@ void and_zp(mos6502_t * cpu){
 	and(cpu, read8(cpu, addr));
 }
 
-void asl_mem(mos6502_t * cpu, uint16_t addr){
-	uint8_t value = read8(cpu, addr);
-	cpu->p.c = value & 0x80;
+void rot(mos6502_t * cpu, uint8_t * target, uint8_t rot, bool left){
+	// uint8_t value = read8(cpu, addr);
+	if(left){
+		cpu->p.c = *target & 0x80;
+		*target = (*target << 1) | rot;
+	}
+	else{
+		if(rot) rot = 128;
+		cpu->p.c = *target & 0x01;
+		*target = (*target >> 1) | rot;
+	}
 
-	value = value << 1;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = *target & 0x80 ? 1 : 0;
 
-	// cpu->p.z = cpu->a == 0 ? 1 : 0;
-	cpu->p.n = value & 0x80 ? 1 : 0;
-
-	write8(cpu, addr, value);
+	// write8(cpu, addr, value);
 }
 
 void asl_a(mos6502_t * cpu){
-	cpu->p.c = cpu->a & 0x80;
+	// cpu->p.c = cpu->a & 0x80;
 
-	cpu->a = cpu->a << 1;
+	// cpu->a = cpu->a << 1;
 
-	cpu->p.z = cpu->a == 0 ? 1 : 0;
-	cpu->p.n = cpu->a & 0x80 ? 1 : 0;
+	// cpu->p.z = cpu->a == 0 ? 1 : 0;
+	// cpu->p.n = cpu->a & 0x80 ? 1 : 0;
+	rot(cpu, &cpu->a, 0, 1);
 }
 
 void asl_abs(mos6502_t * cpu){
 	uint16_t addr = abs_addr(cpu, 0);
-	asl_mem(cpu, addr);
+	uint8_t to_shift = read8(cpu, addr);
+	rot(cpu, &to_shift, 0, 1);
+	write8(cpu, addr, to_shift);
+
+}
+
+void rol_a(mos6502_t * cpu){
+	rot(cpu, &cpu->a, cpu->p.c, 1);
+}
+
+void rol_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	uint8_t to_shift = read8(cpu, addr);
+	rot(cpu, &to_shift, cpu->p.c, 1);
+	write8(cpu, addr, to_shift);
+
+}
+
+void ror_a(mos6502_t * cpu){
+	rot(cpu, &cpu->a, cpu->p.c, 0);
 }
 
 void sec(mos6502_t * cpu){
@@ -380,6 +406,21 @@ void sbc_abs(mos6502_t * cpu){
 	sub(cpu, read8(cpu, addr));
 }
 
+void jmp_abs(mos6502_t * cpu){
+	cpu->pc = abs_addr(cpu,0);
+}
+
+uint16_t ind_abs_addr(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu,0);
+	uint8_t low_byte = read8(cpu, addr++);
+	uint8_t high_byte = read8(cpu, addr);
+	return ((uint16_t) high_byte << 8) + (uint16_t) low_byte;
+}
+
+void jmp_ind(mos6502_t * cpu){
+	cpu->pc = ind_abs_addr(cpu);
+}
+
 void nop(mos6502_t * cpu){
 
 }
@@ -423,6 +464,10 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x0A] = asl_a,
 	[0x0E] = asl_abs,
 
+	[0x2A] = rol_a,
+	[0x2E] = rol_abs,
+	[0x6A] = ror_a,
+
 	[0x38] = sec,
 	[0x18] = clc,
 	[0xF8] = sed,
@@ -457,7 +502,10 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xBA] = tsx,
 	[0x9A] = txs,
 
-	[0xED] = sbc_abs
+	[0xED] = sbc_abs,
+
+	[0x4C] = jmp_abs,
+	[0x6C] = jmp_ind
 };
 
 mos6502_step_result_t
