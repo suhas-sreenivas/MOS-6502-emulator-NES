@@ -76,11 +76,35 @@ uint16_t abs_addr(mos6502_t * cpu, uint8_t offset){
 	return ((uint16_t) high_byte << 8) + (uint16_t) low_byte + (uint16_t) offset;
 }
 
+uint16_t index_indirect_addr(mos6502_t * cpu, uint8_t offset){
+	uint8_t target = read8(cpu, cpu->pc++) + offset;
+	return read16(cpu, target);
+}
+
+uint16_t indirect_index_addr(mos6502_t * cpu, uint8_t offset){
+	uint8_t target = read8(cpu, cpu->pc++);
+	return read16(cpu, target) + offset;
+}
+
 void lda_imm(mos6502_t * cpu){
 	// cpu->pc = cpu->pc + 1; //added
 	uint8_t imm_operand = read8(cpu, cpu->pc);
 	cpu->a = imm_operand;
 	cpu->pc = cpu->pc+1;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = (cpu->a & ( 1 << 7 )) >> 7;
+}
+
+void lda_idx_idr(mos6502_t * cpu){
+	uint16_t addr = index_indirect_addr(cpu, cpu->x);
+	cpu->a = read8(cpu, addr);
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = (cpu->a & ( 1 << 7 )) >> 7;
+}
+
+void lda_idr_idx(mos6502_t * cpu){
+	uint16_t addr = indirect_index_addr(cpu, cpu->y);
+	cpu->a = read8(cpu, addr);
 	cpu->p.z = cpu->a == 0 ? 1 : 0;
 	cpu->p.n = (cpu->a & ( 1 << 7 )) >> 7;
 }
@@ -135,6 +159,11 @@ void stx_abs(mos6502_t * cpu){
 	write8(cpu, abs_addr(cpu,0), cpu->x);
 }
 
+void stx_zp_y(mos6502_t * cpu){
+	uint16_t zp_addr = read8(cpu, cpu->pc++);
+	write8(cpu,(uint8_t)(zp_addr+cpu->y),cpu->x);
+}
+
 void sty_abs(mos6502_t * cpu){
 	write8(cpu, abs_addr(cpu,0), cpu->y);
 }
@@ -164,6 +193,10 @@ void add(mos6502_t * cpu, uint16_t value){
 void adc_abs(mos6502_t * cpu){
 	uint16_t addr = abs_addr(cpu, 0);
 	add(cpu, read8(cpu, addr));
+}
+
+void adc_imm(mos6502_t * cpu){
+	add(cpu, read8(cpu, cpu->pc++));
 }
 
 void and(mos6502_t * cpu, uint8_t value){
@@ -480,6 +513,65 @@ void bcc(mos6502_t * cpu){
 		cpu->pc ++;
 }
 
+void bcs(mos6502_t * cpu){
+	if(cpu->p.c == 1)
+		rel_addr_branch(cpu);
+	else
+		cpu->pc ++;
+}
+
+void beq(mos6502_t * cpu){
+	if(cpu->p.z == 1)
+		rel_addr_branch(cpu);
+	else
+		cpu->pc ++;
+}
+
+void bne(mos6502_t * cpu){
+	if(cpu->p.z == 0)
+		rel_addr_branch(cpu);
+	else
+		cpu->pc ++;
+}
+
+void bpl(mos6502_t * cpu){
+	if(cpu->p.n == 0)
+		rel_addr_branch(cpu);
+	else
+		cpu->pc ++;
+}
+
+void bmi(mos6502_t * cpu){
+	if(cpu->p.n == 1)
+		rel_addr_branch(cpu);
+	else
+		cpu->pc ++;
+}
+
+void bvc(mos6502_t * cpu){
+	if(cpu->p.v == 0)
+		rel_addr_branch(cpu);
+	else
+		cpu->pc ++;
+}
+
+void bvs(mos6502_t * cpu){
+	if(cpu->p.v == 1)
+		rel_addr_branch(cpu);
+	else
+		cpu->pc ++;
+}
+
+void bit_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	uint8_t mem_operand = read8(cpu, addr);
+	uint8_t res = cpu->a & mem_operand;
+
+	cpu->p.n = mem_operand & 0x80 ? 1 : 0;
+	cpu->p.v = mem_operand & 0x40 ? 1 : 0;
+	cpu->p.z = res == 0 ? 1 : 0;
+}
+
 void nop(mos6502_t * cpu){
 
 }
@@ -494,24 +586,30 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x80] = rom_end,
 
 	[0xA9] = lda_imm,
+	[0xA1] = lda_idx_idr,
+	[0xB1] = lda_idr_idx,
 
 	[0xA2] = ldx_imm,
 
 	[0xA0] = ldy_imm,
 
 	[0x8D] = sta_abs,
-	[0x85] = sta_zp,
-	[0x95] = sta_zp_x,
 	[0x9D] = sta_abs_x,
 	[0x99] = sta_abs_y,
 
+
+	[0x85] = sta_zp,
+	[0x95] = sta_zp_x,
+
 	[0x8E] = stx_abs,
+	[0x96] = stx_zp_y,
 
 	[0x8C] = sty_abs,
 	[0x84] = sty_zp,
 	[0x94] = sty_zp_x,
 
 	[0x6D] = adc_abs,
+	[0x69] = adc_imm,
 
 	[0x29] = and_imm,
 	[0x2D] = and_abs,
@@ -576,14 +674,22 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 
 	[0xCC] = cpy_abs,
 
-	[0x90] = bcc
+	[0x90] = bcc,
+	[0xB0] = bcs,
+	[0xF0] = beq,
+	[0xD0] = bne,
+	[0x10] = bpl,
+	[0x30] = bmi,
+	[0x50] = bvc,
+	[0x70] = bvs,
+
+	[0x2C] = bit_abs
 };
 
 mos6502_step_result_t
 mos6502_step (mos6502_t * cpu)
 {
 	uint8_t opcode = read8(cpu, cpu->pc);
-
 	cpu->pc = cpu->pc + 1;
 	(*instr_handler_array[opcode])(cpu);
 	mos6502_advance_clk(cpu, instr_cycles[opcode]);
