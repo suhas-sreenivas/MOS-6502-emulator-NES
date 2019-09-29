@@ -410,15 +410,17 @@ void jmp_abs(mos6502_t * cpu){
 	cpu->pc = abs_addr(cpu,0);
 }
 
-uint16_t ind_abs_addr(mos6502_t * cpu){
-	uint16_t addr = abs_addr(cpu,0);
+uint16_t ind_abs_addr(mos6502_t * cpu, uint16_t addr){
+	// uint16_t addr = abs_addr(cpu,0);
 	uint8_t low_byte = read8(cpu, addr++);
 	uint8_t high_byte = read8(cpu, addr);
 	return ((uint16_t) high_byte << 8) + (uint16_t) low_byte;
 }
 
 void jmp_ind(mos6502_t * cpu){
-	cpu->pc = ind_abs_addr(cpu);
+	uint16_t addr = abs_addr(cpu, 0);
+	if(addr & 0x00FF) cpu->pc = buggy_read16(cpu, addr);
+	else cpu->pc = ind_abs_addr(cpu, addr);
 }
 
 void nop(mos6502_t * cpu){
