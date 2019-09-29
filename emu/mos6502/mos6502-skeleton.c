@@ -423,6 +423,63 @@ void jmp_ind(mos6502_t * cpu){
 	else cpu->pc = ind_abs_addr(cpu, addr);
 }
 
+void jsr_abs(mos6502_t * cpu){
+	push(cpu, (cpu->pc+1 & 0xFF00) >> 8);
+	push(cpu, cpu->pc +1 & 0x00FF);
+	cpu->pc = abs_addr(cpu, 0);
+}
+
+void rts(mos6502_t * cpu){
+	uint8_t low_byte = pop(cpu);
+	uint8_t high_byte = pop(cpu);
+	cpu->pc = 1 + ((uint16_t) high_byte << 8) + (uint16_t) low_byte;
+}
+
+void compare(mos6502_t * cpu, uint8_t val1, uint8_t val2){
+	uint8_t test = val1 - val2;
+	cpu->p.z = test == 0 ? 1 : 0;
+	cpu->p.n = test & 0x80 ? 1 : 0;
+	cpu->p.c = test >= 0 ? 1 : 0;
+
+}
+
+void cmp_abs(mos6502_t * cpu){
+	compare(cpu, cpu->a, read8(cpu, abs_addr(cpu,0)));
+}
+
+void cmp_imm(mos6502_t * cpu){
+	compare(cpu, cpu->a, read8(cpu, cpu->pc++));
+}
+
+void cpx_abs(mos6502_t * cpu){
+	compare(cpu, cpu->x, read8(cpu, abs_addr(cpu,0)));
+}
+
+void cpy_abs(mos6502_t * cpu){
+	compare(cpu, cpu->y, read8(cpu, abs_addr(cpu,0)));
+}
+
+void rel_addr_branch(mos6502_t * cpu){
+	uint8_t t = read8(cpu, cpu->pc++);
+	if(t & 0x80)
+       	cpu->pc += (t-0x100);
+    else
+       	cpu->pc += t;
+}
+
+void bcc(mos6502_t * cpu){
+	if(cpu->p.c == 0){
+		// uint8_t t = read8(cpu, cpu->pc++);
+		// if(t & 0x80)
+        // 	cpu->pc += (t-0x100);
+      	// else
+        // 	cpu->pc += t;
+		rel_addr_branch(cpu);
+	}
+	else
+		cpu->pc ++;
+}
+
 void nop(mos6502_t * cpu){
 
 }
@@ -507,7 +564,19 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xED] = sbc_abs,
 
 	[0x4C] = jmp_abs,
-	[0x6C] = jmp_ind
+	[0x6C] = jmp_ind,
+
+	[0x20] = jsr_abs,
+	[0x60] = rts,
+
+	[0xCD] = cmp_abs,
+	[0xC9] = cmp_imm,
+
+	[0xEC] = cpx_abs,
+
+	[0xCC] = cpy_abs,
+
+	[0x90] = bcc
 };
 
 mos6502_step_result_t
