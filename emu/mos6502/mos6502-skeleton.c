@@ -314,6 +314,26 @@ void or_abs(mos6502_t * cpu){
 	or(cpu, read8(cpu,addr));
 }
 
+void eor(mos6502_t * cpu, uint8_t value){
+	cpu->a = cpu->a ^ value;
+	cpu->p.z = cpu->a == 0 ? 1 : 0;
+	cpu->p.n = cpu->a & 0x80 ? 1 : 0;
+}
+
+void eor_imm(mos6502_t * cpu){
+	eor(cpu,read8(cpu, cpu->pc++));
+}
+
+void eor_abs(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, 0);
+	eor(cpu, read8(cpu,addr));
+}
+
+void eor_abs_y(mos6502_t * cpu){
+	uint16_t addr = abs_addr(cpu, cpu->y);
+	eor(cpu, read8(cpu,addr));
+}
+
 void inc_dec(mos6502_t * cpu, uint16_t addr, uint8_t val){
 	uint8_t target = read8(cpu, addr) + val;
 
@@ -484,6 +504,10 @@ void cmp_imm(mos6502_t * cpu){
 	compare(cpu, cpu->a, read8(cpu, cpu->pc++));
 }
 
+void cpx_imm(mos6502_t * cpu){
+	compare(cpu, cpu->x, read8(cpu, cpu->pc++));
+}
+
 void cpx_abs(mos6502_t * cpu){
 	compare(cpu, cpu->x, read8(cpu, abs_addr(cpu,0)));
 }
@@ -572,6 +596,22 @@ void bit_abs(mos6502_t * cpu){
 	cpu->p.z = res == 0 ? 1 : 0;
 }
 
+void brk(mos6502_t * cpu){
+	cpu->pc++;
+	push(cpu, (cpu->pc & 0xFF00) >> 8);
+	push(cpu,  cpu->pc & 0x00FF);
+	push(cpu, cpu->p.val);
+	cpu->pc = read16(cpu, 0xFFFE);
+	cpu->p.b = 1;
+}
+
+void rti(mos6502_t * cpu){
+	cpu->p.val = pop(cpu);
+	uint8_t low_byte = pop(cpu);
+	uint8_t high_byte = pop(cpu);
+	cpu->pc = ((uint16_t) high_byte << 8) + (uint16_t) low_byte;
+}
+
 void nop(mos6502_t * cpu){
 
 }
@@ -617,6 +657,10 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 
 	[0x09] = or_imm,
 	[0x0D] = or_abs,
+
+	[0x49] = eor_imm,
+	[0x4D] = eor_abs,
+	[0x59] = eor_abs_y,
 
 	[0x0A] = asl_a,
 	[0x0E] = asl_abs,
@@ -670,6 +714,7 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0xCD] = cmp_abs,
 	[0xC9] = cmp_imm,
 
+	[0xE0] = cpx_imm,
 	[0xEC] = cpx_abs,
 
 	[0xCC] = cpy_abs,
@@ -683,13 +728,17 @@ void (*instr_handler_array[1000])(mos6502_t *)= {
 	[0x50] = bvc,
 	[0x70] = bvs,
 
-	[0x2C] = bit_abs
+	[0x2C] = bit_abs,
+
+	[0x00] = brk,
+	[0x40] = rti
 };
 
 mos6502_step_result_t
 mos6502_step (mos6502_t * cpu)
 {
 	uint8_t opcode = read8(cpu, cpu->pc);
+	// INFO_PRINT("%04x", opcode);
 	cpu->pc = cpu->pc + 1;
 	(*instr_handler_array[opcode])(cpu);
 	mos6502_advance_clk(cpu, instr_cycles[opcode]);
