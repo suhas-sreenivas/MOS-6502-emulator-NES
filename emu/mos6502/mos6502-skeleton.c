@@ -30,10 +30,9 @@ static const uint8_t instr_cycles[256] = {
 size_t
 mos6502_instr_repr (mos6502_t * cpu, uint16_t addr, char * buffer, size_t buflen)
 {
-	// FILL ME IN
-
-	// Delete this line when you're done
-	buffer[0] = 0;
+	uint8_t opcode = read8(cpu, cpu->pc);
+	snprintf(buffer, buflen, "\nop:%02x\nA:%02x\nX:%02x\nY:%02x\nP:%02x\ns:%02x",
+								opcode,  cpu->a, cpu->x, cpu->y, cpu->p, cpu->sp);
 	return 0;
 }
 
