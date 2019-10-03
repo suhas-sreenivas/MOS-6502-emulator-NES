@@ -312,7 +312,9 @@ void php(mos6502_t * cpu){
 }
 
 void plp(mos6502_t * cpu){
-	cpu->p.val = 0x20 | pop(cpu);
+	// cpu->p.val = 0x20 | pop(cpu);
+	cpu->p.val = pop(cpu);
+
 }
 
 void tsx(mos6502_t * cpu){
